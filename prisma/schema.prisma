@@ -1,13 +1,10 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = "file:../../prisma/dev.db"
 }
 
 // Discord user model
@@ -16,12 +13,12 @@ model User {
   username       String
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
-  
+
   // Activity tracking
   voiceActivities VoiceActivity[]
   presenceUpdates PresenceUpdate[]
   gameActivities  GameActivity[]
-  
+
   // Analytics
   totalVoiceTime Int            @default(0) // Total time in voice channels in seconds
   lastSeen       DateTime?      // Last time user was seen online
