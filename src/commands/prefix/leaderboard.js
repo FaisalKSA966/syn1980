@@ -22,11 +22,11 @@ module.exports = {
             });
 
             if (users.length === 0) {
-                return await message.reply('📊 No voice activity data found yet. Start using voice channels!');
+                return await message.reply('No voice activity data found yet. Start using voice channels!');
             }
 
-            // Create canvas with dashboard theme
-            const canvas = createCanvas(1000, Math.max(600, 150 + users.length * 60));
+            // Create canvas with larger size for better quality
+            const canvas = createCanvas(1200, Math.max(700, 180 + users.length * 80));
             const ctx = canvas.getContext('2d');
 
             // Dashboard theme colors
@@ -54,86 +54,82 @@ module.exports = {
 
             // Title
             ctx.fillStyle = colors.text;
-            ctx.font = 'bold 36px Arial';
+            ctx.font = 'bold 48px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('🏆 Voice Activity Leaderboard', canvas.width / 2, 50);
+            ctx.fillText('Voice Activity Leaderboard', canvas.width / 2, 60);
 
             // Subtitle
             ctx.fillStyle = colors.textMuted;
-            ctx.font = '18px Arial';
-            ctx.fillText(`Top ${users.length} Most Active Members`, canvas.width / 2, 80);
+            ctx.font = '20px Arial';
+            ctx.fillText(`Top ${users.length} Most Active Members`, canvas.width / 2, 95);
 
             // Draw leaderboard entries
             users.forEach((user, index) => {
                 const rank = index + 1;
-                const y = 120 + index * 60;
-                const cardHeight = 50;
+                const y = 150 + index * 80;
+                const cardHeight = 70;
                 
                 // Rank colors
                 let rankColor = colors.primary;
-                let medal = '🏅';
-                if (rank === 1) { rankColor = colors.gold; medal = '🥇'; }
-                else if (rank === 2) { rankColor = colors.silver; medal = '🥈'; }
-                else if (rank === 3) { rankColor = colors.bronze; medal = '🥉'; }
+                let rankLabel = '#' + rank;
+                if (rank === 1) { rankColor = colors.gold; rankLabel = '1ST'; }
+                else if (rank === 2) { rankColor = colors.silver; rankLabel = '2ND'; }
+                else if (rank === 3) { rankColor = colors.bronze; rankLabel = '3RD'; }
 
                 // Card background
-                const cardGradient = ctx.createLinearGradient(50, y, canvas.width - 50, y + cardHeight);
+                const cardGradient = ctx.createLinearGradient(60, y, canvas.width - 60, y + cardHeight);
                 cardGradient.addColorStop(0, colors.cardBg);
-                cardGradient.addColorStop(1, rank <= 3 ? rankColor + '20' : colors.cardBg);
+                cardGradient.addColorStop(1, rank <= 3 ? rankColor + '15' : colors.cardBg);
                 ctx.fillStyle = cardGradient;
                 ctx.beginPath();
-                ctx.roundRect(50, y, canvas.width - 100, cardHeight, 8);
+                ctx.roundRect(60, y, canvas.width - 120, cardHeight, 12);
                 ctx.fill();
 
                 // Card border
                 ctx.strokeStyle = rankColor;
-                ctx.lineWidth = rank <= 3 ? 3 : 1;
+                ctx.lineWidth = rank <= 3 ? 4 : 2;
                 ctx.stroke();
 
-                // Rank circle
+                // Rank badge
                 ctx.fillStyle = rankColor;
                 ctx.beginPath();
-                ctx.arc(80, y + cardHeight / 2, 20, 0, 2 * Math.PI);
+                ctx.roundRect(80, y + 15, 70, 40, 8);
                 ctx.fill();
 
-                // Rank number
-                ctx.fillStyle = colors.text;
-                ctx.font = 'bold 16px Arial';
+                // Rank text
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 20px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText(rank.toString(), 80, y + cardHeight / 2 + 5);
-
-                // Medal
-                ctx.font = '24px Arial';
-                ctx.fillText(medal, 120, y + cardHeight / 2 + 8);
+                ctx.fillText(rankLabel, 115, y + 42);
 
                 // Username
                 ctx.fillStyle = colors.text;
-                ctx.font = 'bold 20px Arial';
+                ctx.font = 'bold 26px Arial';
                 ctx.textAlign = 'left';
-                ctx.fillText(user.username, 160, y + cardHeight / 2 - 5);
+                ctx.fillText(user.username, 170, y + 35);
 
                 // Voice time
                 const time = formatTime(user.totalVoiceTime);
                 ctx.fillStyle = rankColor;
-                ctx.font = 'bold 18px Arial';
+                ctx.font = 'bold 24px Arial';
                 ctx.textAlign = 'right';
-                ctx.fillText(time, canvas.width - 80, y + cardHeight / 2 + 5);
+                ctx.fillText(time, canvas.width - 100, y + 30);
 
                 // Activity score
                 ctx.fillStyle = colors.textMuted;
-                ctx.font = '14px Arial';
+                ctx.font = '16px Arial';
                 const score = Math.round(user.totalVoiceTime / 60);
-                ctx.fillText(`${score} pts`, canvas.width - 80, y + cardHeight / 2 - 15);
+                ctx.fillText(`${score} points`, canvas.width - 100, y + 52);
             });
 
             // Footer stats
             const totalTime = users.reduce((sum, user) => sum + user.totalVoiceTime, 0);
             const avgTime = users.length > 0 ? totalTime / users.length : 0;
             
-            const footerY = 140 + users.length * 60;
+            const footerY = 170 + users.length * 80;
             ctx.fillStyle = colors.cardBg;
             ctx.beginPath();
-            ctx.roundRect(50, footerY, canvas.width - 100, 60, 8);
+            ctx.roundRect(60, footerY, canvas.width - 120, 70, 12);
             ctx.fill();
 
             ctx.strokeStyle = colors.primary;
@@ -141,28 +137,28 @@ module.exports = {
             ctx.stroke();
 
             ctx.fillStyle = colors.text;
-            ctx.font = 'bold 16px Arial';
+            ctx.font = 'bold 18px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('📊 Leaderboard Statistics', canvas.width / 2, footerY + 25);
+            ctx.fillText('Leaderboard Statistics', canvas.width / 2, footerY + 28);
 
             ctx.fillStyle = colors.textMuted;
-            ctx.font = '14px Arial';
-            ctx.fillText(`Total Voice Time: ${formatTime(totalTime)} • Average: ${formatTime(avgTime)}`, canvas.width / 2, footerY + 45);
+            ctx.font = '16px Arial';
+            ctx.fillText(`Total Voice Time: ${formatTime(totalTime)} - Average: ${formatTime(avgTime)}`, canvas.width / 2, footerY + 48);
 
             // Powered by footer
             ctx.fillStyle = colors.textMuted;
-            ctx.font = '12px Arial';
-            ctx.fillText('Powered by 1980 Foundation × Flowline Data Solutions', canvas.width / 2, canvas.height - 20);
+            ctx.font = '14px Arial';
+            ctx.fillText('Powered by 1980 Foundation x Flowline Data Solutions', canvas.width / 2, canvas.height - 25);
 
             // Create attachment
             const buffer = canvas.toBuffer('image/png');
             const attachment = new AttachmentBuilder(buffer, { name: 'leaderboard.png' });
 
             const embed = new EmbedBuilder()
-                .setTitle('🏆 Voice Activity Leaderboard')
+                .setTitle('Voice Activity Leaderboard')
                 .setDescription(`Top **${users.length}** most active members\n` +
-                               `🎤 **${formatTime(totalTime)}** total voice time\n` +
-                               `📊 **${formatTime(avgTime)}** average per member`)
+                               `**${formatTime(totalTime)}** total voice time\n` +
+                               `**${formatTime(avgTime)}** average per member`)
                 .setColor('#FFD700')
                 .setImage('attachment://leaderboard.png')
                 .setTimestamp()
@@ -171,7 +167,7 @@ module.exports = {
             await message.reply({ embeds: [embed], files: [attachment] });
         } catch (error) {
             console.error('Error fetching leaderboard:', error);
-            await message.reply('❌ Error fetching leaderboard data.');
+            await message.reply('Error fetching leaderboard data.');
         }
     }
 };

@@ -59,7 +59,7 @@ module.exports = {
             ctx.fillStyle = colors.text;
             ctx.font = 'bold 36px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('📊 Server Statistics', canvas.width / 2, 60);
+            ctx.fillText('Server Statistics', canvas.width / 2, 60);
 
             // Subtitle
             ctx.fillStyle = colors.textMuted;
@@ -69,42 +69,36 @@ module.exports = {
             // Stats data
             const stats = [
                 { 
-                    icon: '👥', 
                     label: 'Total Users', 
                     value: totalUsers.toString(), 
                     color: colors.primary,
                     description: 'Registered members'
                 },
                 { 
-                    icon: '🟢', 
                     label: 'Active Users', 
                     value: activeUsers.toString(), 
                     color: colors.success,
                     description: 'Users with voice activity'
                 },
                 { 
-                    icon: '🎤', 
                     label: 'In Voice Now', 
                     value: currentVoiceUsers.toString(), 
                     color: colors.accent,
                     description: 'Currently in voice channels'
                 },
                 { 
-                    icon: '⏱️', 
                     label: 'Total Voice Time', 
                     value: formatTime(totalVoiceTimeResult._sum.totalVoiceTime || 0), 
                     color: colors.warning,
                     description: 'Cumulative voice activity'
                 },
                 { 
-                    icon: '📈', 
                     label: 'Total Sessions', 
                     value: totalSessions.toString(), 
                     color: colors.secondary,
                     description: 'Voice channel sessions'
                 },
                 { 
-                    icon: '📊', 
                     label: 'Avg Session', 
                     value: formatTime(Math.round(avgSessionResult._avg.duration || 0)), 
                     color: colors.primary,
@@ -141,26 +135,21 @@ module.exports = {
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // Icon
-                ctx.fillStyle = stat.color;
-                ctx.font = '32px Arial';
-                ctx.textAlign = 'left';
-                ctx.fillText(stat.icon, x + 20, y + 45);
-
                 // Label
                 ctx.fillStyle = colors.text;
                 ctx.font = 'bold 18px Arial';
-                ctx.fillText(stat.label, x + 70, y + 35);
+                ctx.textAlign = 'left';
+                ctx.fillText(stat.label, x + 20, y + 35);
 
                 // Value
                 ctx.fillStyle = stat.color;
                 ctx.font = 'bold 24px Arial';
-                ctx.fillText(stat.value, x + 70, y + 65);
+                ctx.fillText(stat.value, x + 20, y + 65);
 
                 // Description
                 ctx.fillStyle = colors.textMuted;
                 ctx.font = '12px Arial';
-                ctx.fillText(stat.description, x + 70, y + 85);
+                ctx.fillText(stat.description, x + 20, y + 85);
 
                 // Activity indicator (small animated dot)
                 if (stat.label.includes('Now') && currentVoiceUsers > 0) {
@@ -200,7 +189,7 @@ module.exports = {
             ctx.fillStyle = colors.textMuted;
             ctx.font = '14px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('Powered by 1980 Foundation × Flowline Data Solutions', canvas.width / 2, canvas.height - 20);
+            ctx.fillText('Powered by 1980 Foundation x Flowline Data Solutions', canvas.width / 2, canvas.height - 20);
 
             // Real-time timestamp
             ctx.fillStyle = colors.textMuted;
@@ -212,8 +201,8 @@ module.exports = {
             const attachment = new AttachmentBuilder(buffer, { name: 'stats.png' });
 
             const embed = new EmbedBuilder()
-                .setTitle('📊 Server Statistics Dashboard')
-                .setDescription(`**${totalUsers}** total users • **${activeUsers}** active • **${currentVoiceUsers}** in voice`)
+                .setTitle('Server Statistics Dashboard')
+                .setDescription(`**${totalUsers}** total users - **${activeUsers}** active - **${currentVoiceUsers}** in voice`)
                 .setColor('#8B5CF6')
                 .setImage('attachment://stats.png')
                 .setTimestamp()
@@ -222,7 +211,7 @@ module.exports = {
             await message.reply({ embeds: [embed], files: [attachment] });
         } catch (error) {
             console.error('Error fetching stats:', error);
-            await message.reply('❌ Error fetching server statistics.');
+            await message.reply('Error fetching server statistics.');
         }
     }
 };
