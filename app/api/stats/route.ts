@@ -1,19 +1,13 @@
 import { NextResponse } from 'next/server'
 
-// This would connect to your Discord bot's API
-// For now, returning mock data
 export async function GET() {
   try {
-    // In production, this would fetch from your Discord bot API
-    // const response = await fetch(`${process.env.BOT_API_URL}/api/server/stats`)
-    // const data = await response.json()
-    
     // Mock data for demonstration
     const mockStats = {
       totalUsers: 4827,
       activeUsers: 1243,
       currentVoiceUsers: 89,
-      totalVoiceTime: 2847392, // seconds
+      totalVoiceTime: 2847392,
       totalSessions: 15847,
       averageSessionTime: 1847
     }

@@ -7,10 +7,6 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const search = searchParams.get('search') || ''
     
-    // In production, this would fetch from your Discord bot API
-    // const response = await fetch(`${process.env.BOT_API_URL}/api/users?page=${page}&limit=${limit}&search=${search}`)
-    // const data = await response.json()
-    
     // Mock comprehensive user data
     const mockUsers = Array.from({ length: 100 }, (_, i) => ({
       id: `user_${i + 1}`,

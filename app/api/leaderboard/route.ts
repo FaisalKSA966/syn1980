@@ -5,10 +5,6 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '10')
     
-    // In production, this would fetch from your Discord bot API
-    // const response = await fetch(`${process.env.BOT_API_URL}/api/server/leaderboard?limit=${limit}`)
-    // const data = await response.json()
-    
     // Mock data for demonstration
     const mockLeaderboard = [
       {

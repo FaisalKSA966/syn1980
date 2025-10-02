@@ -5,10 +5,6 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '7')
     
-    // In production, this would fetch from your Discord bot API
-    // const response = await fetch(`${process.env.BOT_API_URL}/api/server/heatmap?days=${days}`)
-    // const data = await response.json()
-    
     // Mock heatmap data for demonstration
     const mockHeatmap = {
       heatmap: Array.from({ length: 7 }, (_, day) => 
