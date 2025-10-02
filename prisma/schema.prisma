@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String          @id
+  username       String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  
+  voiceActivities VoiceActivity[]
+  presenceUpdates PresenceUpdate[]
+  gameActivities  GameActivity[]
+  
+  totalVoiceTime Int            @default(0)
+  lastSeen       DateTime?
+}
+
+model VoiceActivity {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  channelId   String
+  channelName String?
+  joinTime    DateTime @default(now())
+  leaveTime   DateTime?
+  duration    Int?
+  
+  @@index([userId])
+  @@index([channelId])
+  @@index([joinTime])
+}
+
+model PresenceUpdate {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  status    String
+  timestamp DateTime @default(now())
+  
+  @@index([userId])
+  @@index([timestamp])
+}
+
+model GameActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  gameName  String
+  startTime DateTime @default(now())
+  endTime   DateTime?
+  duration  Int?
+  
+  @@index([userId])
+  @@index([gameName])
+  @@index([startTime])
+}
+
+model ServerAnalytics {
+  id            String   @id @default(uuid())
+  date          DateTime @default(now()) @db.Date
+  hour          Int
+  activeUsers   Int      @default(0)
+  voiceUsers    Int      @default(0)
+  
+  @@unique([date, hour])
+  @@index([date])
+}
+
+model ChannelAnalytics {
+  id            String   @id @default(uuid())
+  channelId     String
+  channelName   String?
+  date          DateTime @default(now()) @db.Date
+  hour          Int
+  activeUsers   Int      @default(0)
+  averageDuration Int    @default(0)
+  
+  @@unique([channelId, date, hour])
+  @@index([channelId])
+  @@index([date])
+}
+
+model GameAnalytics {
+  id          String   @id @default(uuid())
+  gameName    String
+  date        DateTime @default(now()) @db.Date
+  hour        Int
+  playerCount Int      @default(0)
+  
+  @@unique([gameName, date, hour])
+  @@index([gameName])
+  @@index([date])
+}
