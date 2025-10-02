@@ -71,7 +71,7 @@ export async function getLeaderboard(limit: number = 10) {
       ...user,
       rank: index + 1,
       activityScore: Math.round(user.totalVoiceTime / 60),
-      avatar: null
+      avatar: `https://cdn.discordapp.com/avatars/${user.id}/avatar.png?size=128` // Discord avatar URL
     }))
   } catch (error) {
     console.error('Leaderboard error:', error)
@@ -158,5 +158,59 @@ export async function getHeatmapData(days: number = 7) {
   } catch (error) {
     console.error('Heatmap error:', error)
     return Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => 0))
+  }
+}
+
+export async function getPopularGames(limit: number = 10) {
+  try {
+    // Get games with most players
+    const games = await prisma.gameActivity.groupBy({
+      by: ['gameName'],
+      _count: {
+        id: true
+      },
+      _sum: {
+        duration: true
+      },
+      orderBy: {
+        _count: {
+          id: 'desc'
+        }
+      },
+      take: limit
+    })
+
+    // Get unique players for each game
+    const gamesWithDetails = await Promise.all(
+      games.map(async (game) => {
+        const uniquePlayers = await prisma.gameActivity.findMany({
+          where: { gameName: game.gameName },
+          distinct: ['userId'],
+          select: { userId: true }
+        })
+
+        const currentPlayers = await prisma.gameActivity.count({
+          where: {
+            gameName: game.gameName,
+            endTime: null
+          }
+        })
+
+        return {
+          name: game.gameName,
+          totalPlayers: uniquePlayers.length,
+          currentPlayers: currentPlayers,
+          totalSessions: game._count.id,
+          totalPlayTime: game._sum.duration || 0,
+          averagePlayTime: game._sum.duration ? Math.round(game._sum.duration / game._count.id) : 0,
+          image: null // Will be fetched from IGDB API or default
+        }
+      })
+    )
+
+    return gamesWithDetails
+  } catch (error) {
+    console.error('Games error:', error)
+    return []
   }
 }

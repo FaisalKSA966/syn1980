@@ -55,6 +55,7 @@ export default function Dashboard() {
 
   const [leaderboard, setLeaderboard] = useState([])
   const [users, setUsers] = useState([])
+  const [games, setGames] = useState([])
 
   useEffect(() => {
     // Check authentication
@@ -90,7 +91,7 @@ export default function Dashboard() {
       if (!refreshing) setLoading(true)
 
       // Fetch real data from server-side API routes
-      const [statsRes, leaderboardRes, usersRes] = await Promise.all([
+      const [statsRes, leaderboardRes, usersRes, gamesRes] = await Promise.all([
         fetch('/api/stats', { 
           cache: 'no-store',
           headers: { 'Cache-Control': 'no-cache' }
@@ -100,6 +101,10 @@ export default function Dashboard() {
           headers: { 'Cache-Control': 'no-cache' }
         }).catch(() => null),
         fetch('/api/users?limit=50', { 
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        }).catch(() => null),
+        fetch('/api/games', { 
           cache: 'no-store',
           headers: { 'Cache-Control': 'no-cache' }
         }).catch(() => null)
@@ -136,6 +141,14 @@ export default function Dashboard() {
         setUsers([])
       }
 
+      // Handle games
+      if (gamesRes && gamesRes.ok) {
+        const gamesData = await gamesRes.json()
+        setGames(gamesData || [])
+      } else {
+        setGames([])
+      }
+
       setDataLoaded(true)
     } catch (err) {
       console.error('Error loading data:', err)
@@ -151,6 +164,7 @@ export default function Dashboard() {
       })
       setLeaderboard([])
       setUsers([])
+      setGames([])
       setDataLoaded(true)
     } finally {
       setLoading(false)
@@ -203,15 +217,17 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Bot className="h-8 w-8 text-purple-400" />
-                <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-                  1980 Synthesis
-                </h1>
+              <div className="flex items-center space-x-3">
+                <img src="/logo.png" alt="1980 Synthesis" className="h-12 w-12 rounded-lg" />
+                <div>
+                  <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                    1980 Synthesis
+          </h1>
+                  <p className="text-purple-300 text-xs">
+                    Powered by <span className="font-semibold">1980 Foundation</span> × <span className="font-semibold">Flowline Data Solutions</span>
+                  </p>
+                </div>
               </div>
-              <p className="text-purple-300 text-sm">
-                Powered by <span className="font-semibold">1980 Foundation</span> × <span className="font-semibold">Flowline Data Solutions</span>
-              </p>
             </div>
             <div className="flex items-center space-x-4">
               <Badge variant="outline" className="border-green-500 text-green-400">
@@ -242,7 +258,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      </header>
+        </header>
 
       <main className="container mx-auto px-4 py-8">
         {error && (
@@ -271,7 +287,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {/* Stats Cards */}
+        {/* Stats Cards */}
             <div className="mb-8">
               <StatsCards stats={stats} />
             </div>
@@ -299,46 +315,69 @@ export default function Dashboard() {
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2">
-                  <Card className="bg-black/20 border-purple-800/50">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-purple-300">
-                        <Calendar className="h-5 w-5" />
-                        Weekly Activity Heatmap
-                      </CardTitle>
-                      <CardDescription className="text-purple-400">
-                        Server activity peaks throughout the week
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ActivityHeatmap />
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-black/20 border-purple-800/50">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-purple-300">
-                        <Gamepad2 className="h-5 w-5" />
-                        Popular Games
-                      </CardTitle>
-                      <CardDescription className="text-purple-400">
-                        Most played games on the server
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {stats.totalUsers === 0 ? (
-                        <div className="text-center py-8">
-                          <Gamepad2 className="h-12 w-12 text-purple-400 mx-auto mb-3 opacity-50" />
-                          <p className="text-purple-300">No game data available</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <p className="text-purple-300 text-sm">Game data will be displayed when available from the bot</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
+                <Card className="bg-black/20 border-purple-800/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-purple-300">
+                      <Gamepad2 className="h-5 w-5" />
+                      Popular Games
+                    </CardTitle>
+                    <CardDescription className="text-purple-400">
+                      Most played games with detailed statistics
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {games.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Gamepad2 className="h-16 w-16 text-purple-400 mx-auto mb-4 opacity-50" />
+                        <p className="text-purple-300 text-lg font-semibold mb-2">No game data available yet</p>
+                        <p className="text-purple-400 text-sm">Start playing games to see statistics here</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {games.map((game: any, index: number) => (
+                          <Card key={index} className="bg-gradient-to-br from-purple-900/30 to-pink-900/20 border-purple-700/50 hover:border-purple-500/70 transition-all duration-300">
+                            <CardContent className="p-4">
+                              <div className="flex items-start gap-3">
+                                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">
+                                  {game.name.charAt(0)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-bold text-white text-sm mb-1 truncate" title={game.name}>{game.name}</h3>
+                                  <div className="space-y-1 text-xs">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-purple-300">Total Players</span>
+                                      <span className="font-semibold text-purple-200">{game.totalPlayers}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-green-300">Playing Now</span>
+                                      <span className="font-semibold text-green-200">{game.currentPlayers}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-blue-300">Sessions</span>
+                                      <span className="font-semibold text-blue-200">{game.totalSessions}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-pink-300">Avg Time</span>
+                                      <span className="font-semibold text-pink-200">{formatTime(game.averagePlayTime)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-orange-300">Total Time</span>
+                                      <span className="font-semibold text-orange-200">{formatTime(game.totalPlayTime)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <Progress 
+                                value={(game.totalPlayers / (stats.activeUsers || 1)) * 100} 
+                                className="mt-3 h-1 bg-purple-900/50"
+                              />
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Leaderboard Tab */}
@@ -509,8 +548,8 @@ export default function Dashboard() {
                           <div className="flex justify-between items-center">
                             <span className="text-purple-300">Currently Connected</span>
                             <span className="font-bold text-white">{formatNumber(stats.currentVoiceUsers)}</span>
-                          </div>
-                        </div>
+        </div>
+      </div>
                       )}
                     </CardContent>
                   </Card>
