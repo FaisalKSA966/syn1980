@@ -27,7 +27,8 @@ import {
   Eye,
   MessageSquare,
   Bot,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react'
 import { ActivityHeatmap } from '@/components/activity-heatmap'
 import { Leaderboard } from '@/components/leaderboard'
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const [authenticated, setAuthenticated] = useState(false)
   const [dataLoaded, setDataLoaded] = useState(false)
   const [error, setError] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
   const router = useRouter()
 
   // Real data state
@@ -68,14 +70,6 @@ export default function Dashboard() {
         if (hoursDiff < 24) {
           setAuthenticated(true)
           loadData()
-          
-          // Set up real-time data updates every 5 seconds
-          const interval = setInterval(() => {
-            loadData()
-          }, 5000)
-
-          // Cleanup interval on unmount
-          return () => clearInterval(interval)
         } else {
           // Clear expired session
           localStorage.removeItem('syn1980_auth')
@@ -92,14 +86,23 @@ export default function Dashboard() {
 
   const loadData = async () => {
     try {
-      setLoading(true)
       setError('')
+      if (!refreshing) setLoading(true)
 
-      // Fetch real data from API
+      // Fetch real data from server-side API routes
       const [statsRes, leaderboardRes, usersRes] = await Promise.all([
-        fetch('/api/stats').catch(() => null),
-        fetch('/api/leaderboard?limit=10').catch(() => null),
-        fetch('/api/users?limit=50').catch(() => null)
+        fetch('/api/stats', { 
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        }).catch(() => null),
+        fetch('/api/leaderboard?limit=10', { 
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        }).catch(() => null),
+        fetch('/api/users?limit=50', { 
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        }).catch(() => null)
       ])
 
       // Handle stats
@@ -120,7 +123,7 @@ export default function Dashboard() {
       // Handle leaderboard
       if (leaderboardRes && leaderboardRes.ok) {
         const leaderboardData = await leaderboardRes.json()
-        setLeaderboard(leaderboardData.users || [])
+        setLeaderboard(leaderboardData.users || leaderboardData || [])
       } else {
         setLeaderboard([])
       }
@@ -128,7 +131,7 @@ export default function Dashboard() {
       // Handle users
       if (usersRes && usersRes.ok) {
         const usersData = await usersRes.json()
-        setUsers(usersData.users || [])
+        setUsers(usersData.users || usersData || [])
       } else {
         setUsers([])
       }
@@ -150,8 +153,14 @@ export default function Dashboard() {
       setUsers([])
       setDataLoaded(true)
     } finally {
-      setTimeout(() => setLoading(false), 1000)
+      setLoading(false)
+      setRefreshing(false)
     }
+  }
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await loadData()
   }
 
   const filteredUsers = users.filter(user =>
@@ -181,7 +190,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold text-white mb-2">Loading Data...</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">Loading Dashboard...</h2>
           <p className="text-purple-300">Connecting to Database</p>
         </div>
       </div>
@@ -209,6 +218,15 @@ export default function Dashboard() {
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
                 Live
               </Badge>
+              <Button 
+                variant="outline" 
+                className="border-blue-500 text-blue-300 hover:bg-blue-500/10"
+                onClick={handleRefresh}
+                disabled={refreshing}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
               <Button variant="outline" className="border-purple-500 text-purple-300 hover:bg-purple-500/10">
                 <Globe className="w-4 h-4 mr-2" />
                 syn.ksa1980.lol
@@ -235,7 +253,7 @@ export default function Dashboard() {
               variant="outline" 
               size="sm" 
               className="ml-auto border-red-500 text-red-300"
-              onClick={loadData}
+              onClick={handleRefresh}
             >
               Retry
             </Button>
@@ -247,7 +265,7 @@ export default function Dashboard() {
             <AlertCircle className="h-16 w-16 text-yellow-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-white mb-2">No Data Available</h2>
             <p className="text-purple-300 mb-4">No data found in database</p>
-            <Button onClick={loadData} className="bg-purple-600 hover:bg-purple-700">
+            <Button onClick={handleRefresh} className="bg-purple-600 hover:bg-purple-700">
               Reload Data
             </Button>
           </div>
@@ -286,10 +304,10 @@ export default function Dashboard() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-purple-300">
                         <Calendar className="h-5 w-5" />
-                        خريطة النشاط الأسبوعية
+                        Weekly Activity Heatmap
                       </CardTitle>
                       <CardDescription className="text-purple-400">
-                        أوقات ذروة النشاط في السيرفر
+                        Server activity peaks throughout the week
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -301,21 +319,21 @@ export default function Dashboard() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-purple-300">
                         <Gamepad2 className="h-5 w-5" />
-                        الألعاب الشائعة
+                        Popular Games
                       </CardTitle>
                       <CardDescription className="text-purple-400">
-                        أكثر الألعاب لعباً في السيرفر
+                        Most played games on the server
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       {stats.totalUsers === 0 ? (
                         <div className="text-center py-8">
                           <Gamepad2 className="h-12 w-12 text-purple-400 mx-auto mb-3 opacity-50" />
-                          <p className="text-purple-300">لا توجد بيانات ألعاب متاحة</p>
+                          <p className="text-purple-300">No game data available</p>
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          <p className="text-purple-300 text-sm">سيتم عرض البيانات عند توفرها من البوت</p>
+                          <p className="text-purple-300 text-sm">Game data will be displayed when available from the bot</p>
                         </div>
                       )}
                     </CardContent>
@@ -329,18 +347,18 @@ export default function Dashboard() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-purple-300">
                       <Award className="h-5 w-5" />
-                      متصدرو النشاط الصوتي
+                      Voice Activity Leaderboard
                     </CardTitle>
                     <CardDescription className="text-purple-400">
-                      الأعضاء الأكثر تفاعلاً في القنوات الصوتية
+                      Most active members in voice channels
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     {leaderboard.length === 0 ? (
                       <div className="text-center py-12">
                         <Award className="h-16 w-16 text-purple-400 mx-auto mb-4 opacity-50" />
-                        <h3 className="text-xl font-bold text-white mb-2">لا توجد بيانات متصدرين</h3>
-                        <p className="text-purple-300">لم يتم العثور على بيانات نشاط صوتي في قاعدة البيانات</p>
+                        <h3 className="text-xl font-bold text-white mb-2">No Leaderboard Data</h3>
+                        <p className="text-purple-300">No voice activity found in database</p>
                       </div>
                     ) : (
                       <Leaderboard users={leaderboard} />
@@ -355,10 +373,10 @@ export default function Dashboard() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-purple-300">
                       <Users className="h-5 w-5" />
-                      جميع الأعضاء ({users.length})
+                      All Members ({users.length})
                     </CardTitle>
                     <CardDescription className="text-purple-400">
-                      قائمة شاملة بجميع الأعضاء النشطين
+                      Comprehensive list of all active members
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -366,7 +384,7 @@ export default function Dashboard() {
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-400 h-4 w-4" />
                         <Input
-                          placeholder="البحث عن عضو..."
+                          placeholder="Search for a member..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           className="pl-10 bg-black/30 border-purple-700 text-white placeholder:text-purple-400"
@@ -377,9 +395,9 @@ export default function Dashboard() {
                     {users.length === 0 ? (
                       <div className="text-center py-12">
                         <Users className="h-16 w-16 text-purple-400 mx-auto mb-4 opacity-50" />
-                        <h3 className="text-xl font-bold text-white mb-2">لا توجد بيانات أعضاء</h3>
-                        <p className="text-purple-300">لم يتم العثور على بيانات أعضاء في قاعدة البيانات</p>
-                        <p className="text-purple-400 text-sm mt-2">تأكد من أن البوت يعمل ويراقب السيرفر</p>
+                        <h3 className="text-xl font-bold text-white mb-2">No Member Data</h3>
+                        <p className="text-purple-300">No member data found in database</p>
+                        <p className="text-purple-400 text-sm mt-2">Make sure the bot is running and monitoring the server</p>
                       </div>
                     ) : (
                       <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -397,7 +415,7 @@ export default function Dashboard() {
 
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
-                                <p className="font-bold text-white truncate">{user.username || 'مستخدم غير معروف'}</p>
+                                <p className="font-bold text-white truncate">{user.username || 'Unknown User'}</p>
                                 <Badge className="bg-purple-600 text-white text-xs">
                                   #{user.rank || index + 1}
                                 </Badge>
@@ -409,7 +427,7 @@ export default function Dashboard() {
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <Activity className="h-3 w-3" />
-                                  {user.activityScore || 0} نقطة
+                                  {user.activityScore || 0} points
                                 </span>
                               </div>
                             </div>
@@ -419,7 +437,7 @@ export default function Dashboard() {
                                 {user.activityScore || 0}
                               </div>
                               <div className="text-purple-300 text-xs">
-                                نقاط النشاط
+                                Activity Points
                               </div>
                             </div>
                           </div>
@@ -437,23 +455,23 @@ export default function Dashboard() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-purple-300">
                         <TrendingUp className="h-5 w-5" />
-                        إحصائيات النمو
+                        Growth Statistics
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       {stats.totalUsers === 0 ? (
                         <div className="text-center py-8">
                           <TrendingUp className="h-12 w-12 text-purple-400 mx-auto mb-3 opacity-50" />
-                          <p className="text-purple-300">لا توجد بيانات نمو متاحة</p>
+                          <p className="text-purple-300">No growth data available</p>
                         </div>
                       ) : (
                         <div className="space-y-4">
                           <div className="flex justify-between items-center">
-                            <span className="text-purple-300">إجمالي الأعضاء</span>
+                            <span className="text-purple-300">Total Members</span>
                             <span className="font-bold text-white">{formatNumber(stats.totalUsers)}</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-purple-300">الأعضاء النشطين</span>
+                            <span className="text-purple-300">Active Members</span>
                             <span className="font-bold text-white">{formatNumber(stats.activeUsers)}</span>
                           </div>
                           <Progress 
@@ -469,27 +487,27 @@ export default function Dashboard() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-purple-300">
                         <Mic className="h-5 w-5" />
-                        النشاط الصوتي
+                        Voice Activity
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       {stats.totalVoiceTime === 0 ? (
                         <div className="text-center py-8">
                           <Mic className="h-12 w-12 text-purple-400 mx-auto mb-3 opacity-50" />
-                          <p className="text-purple-300">لا توجد بيانات نشاط صوتي</p>
+                          <p className="text-purple-300">No voice activity data</p>
                         </div>
                       ) : (
                         <div className="space-y-4">
                           <div className="flex justify-between items-center">
-                            <span className="text-purple-300">إجمالي الوقت الصوتي</span>
+                            <span className="text-purple-300">Total Voice Time</span>
                             <span className="font-bold text-white">{formatTime(stats.totalVoiceTime)}</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-purple-300">متوسط الجلسة</span>
+                            <span className="text-purple-300">Average Session</span>
                             <span className="font-bold text-white">{formatTime(stats.averageSessionTime)}</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-purple-300">المتصلين حالياً</span>
+                            <span className="text-purple-300">Currently Connected</span>
                             <span className="font-bold text-white">{formatNumber(stats.currentVoiceUsers)}</span>
                           </div>
                         </div>

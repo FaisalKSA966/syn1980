@@ -1,25 +1,22 @@
 import { NextResponse } from 'next/server'
+import { getHeatmapData } from '@/lib/database'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '7')
     
-    // In a real implementation, this would query your Discord bot's database
-    // For now, we return empty heatmap data to indicate no data is available
-    const realHeatmap = {
-      heatmap: Array.from({ length: 7 }, () => 
-        Array.from({ length: 24 }, () => 0)
-      ),
-      message: "لا توجد بيانات نشاط - لم يتم العثور على بيانات نشاط في قاعدة البيانات"
-    }
-
-    return NextResponse.json(realHeatmap)
+    const heatmap = await getHeatmapData(days)
+    
+    return NextResponse.json({
+      heatmap: heatmap,
+      message: heatmap.flat().every(val => val === 0) ? "No activity data for the specified days" : null
+    })
   } catch (error) {
     console.error('Error fetching heatmap:', error)
     return NextResponse.json(
       { 
-        error: 'فشل في استخراج بيانات خريطة النشاط من قاعدة البيانات',
+        error: 'Failed to fetch heatmap data',
         heatmap: Array.from({ length: 7 }, () => 
           Array.from({ length: 24 }, () => 0)
         )

@@ -1,47 +1,15 @@
 import { NextResponse } from 'next/server'
+import { getServerStats } from '@/lib/database'
 
 export async function GET() {
   try {
-    // Try to fetch from bot API
-    const botApiUrl = process.env.BOT_API_URL || 'http://localhost:3001'
-    
-    try {
-      const response = await fetch(`${botApiUrl}/api/stats`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // Add timeout
-        signal: AbortSignal.timeout(5000)
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        return NextResponse.json(data)
-      } else {
-        throw new Error(`Bot API returned ${response.status}`)
-      }
-    } catch (fetchError) {
-      console.log('Bot API not available:', fetchError.message)
-      
-      // Return empty stats with message
-      const emptyStats = {
-        totalUsers: 0,
-        activeUsers: 0,
-        currentVoiceUsers: 0,
-        totalVoiceTime: 0,
-        totalSessions: 0,
-        averageSessionTime: 0,
-        message: "لا توجد بيانات متاحة - تأكد من أن البوت يعمل ومتصل بقاعدة البيانات"
-      }
-
-      return NextResponse.json(emptyStats)
-    }
+    const stats = await getServerStats()
+    return NextResponse.json(stats)
   } catch (error) {
     console.error('Error fetching server stats:', error)
     return NextResponse.json(
       { 
-        error: 'فشل في استخراج الإحصائيات من قاعدة البيانات',
+        error: 'Failed to fetch server statistics',
         totalUsers: 0,
         activeUsers: 0,
         currentVoiceUsers: 0,
