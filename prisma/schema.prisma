@@ -1,0 +1,111 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Discord user model
+model User {
+  id             String          @id // Discord user ID
+  username       String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  
+  // Activity tracking
+  voiceActivities VoiceActivity[]
+  presenceUpdates PresenceUpdate[]
+  gameActivities  GameActivity[]
+  
+  // Analytics
+  totalVoiceTime Int            @default(0) // Total time in voice channels in seconds
+  lastSeen       DateTime?      // Last time user was seen online
+}
+
+// Voice channel activity tracking
+model VoiceActivity {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  channelId   String   // Discord channel ID
+  channelName String?
+  joinTime    DateTime @default(now())
+  leaveTime   DateTime?
+  duration    Int?     // Duration in seconds (calculated on leave)
+  
+  @@index([userId])
+  @@index([channelId])
+  @@index([joinTime])
+}
+
+// User presence updates (online, offline, idle, etc.)
+model PresenceUpdate {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  status    String   // online, offline, idle, dnd
+  timestamp DateTime @default(now())
+  
+  @@index([userId])
+  @@index([timestamp])
+}
+
+// Game activity tracking
+model GameActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  gameName  String
+  startTime DateTime @default(now())
+  endTime   DateTime?
+  duration  Int?     // Duration in seconds (calculated on end)
+  
+  @@index([userId])
+  @@index([gameName])
+  @@index([startTime])
+}
+
+// Server activity analytics
+model ServerAnalytics {
+  id            String   @id @default(uuid())
+  date          DateTime @default(now()) @db.Date // Store only the date part
+  hour          Int      // 0-23 hour of the day
+  activeUsers   Int      @default(0) // Number of active users in this hour
+  voiceUsers    Int      @default(0) // Number of users in voice channels in this hour
+  
+  @@unique([date, hour])
+  @@index([date])
+}
+
+// Channel analytics
+model ChannelAnalytics {
+  id            String   @id @default(uuid())
+  channelId     String
+  channelName   String?
+  date          DateTime @default(now()) @db.Date
+  hour          Int
+  activeUsers   Int      @default(0)
+  averageDuration Int    @default(0) // Average time users spent in this channel for this hour
+  
+  @@unique([channelId, date, hour])
+  @@index([channelId])
+  @@index([date])
+}
+
+// Game analytics
+model GameAnalytics {
+  id          String   @id @default(uuid())
+  gameName    String
+  date        DateTime @default(now()) @db.Date
+  hour        Int
+  playerCount Int      @default(0)
+  
+  @@unique([gameName, date, hour])
+  @@index([gameName])
+  @@index([date])
+}
