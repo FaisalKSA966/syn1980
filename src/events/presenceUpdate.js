@@ -7,6 +7,9 @@ module.exports = {
         // Skip if the user is a bot or if no new presence
         if (!newPresence || !newPresence.user || newPresence.user.bot) return;
         
+        // Temporarily disable to avoid database timeout
+        return;
+        
         const userId = newPresence.user.id;
         const username = newPresence.user.username;
         
