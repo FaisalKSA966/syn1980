@@ -68,6 +68,14 @@ export default function Dashboard() {
         if (hoursDiff < 24) {
           setAuthenticated(true)
           loadData()
+          
+          // Set up real-time data updates every 5 seconds
+          const interval = setInterval(() => {
+            loadData()
+          }, 5000)
+
+          // Cleanup interval on unmount
+          return () => clearInterval(interval)
         } else {
           // Clear expired session
           localStorage.removeItem('syn1980_auth')
@@ -128,7 +136,7 @@ export default function Dashboard() {
       setDataLoaded(true)
     } catch (err) {
       console.error('Error loading data:', err)
-      setError('فشل في تحميل البيانات من قاعدة البيانات')
+      setError('Failed to load data from database')
       // Set empty data
       setStats({
         totalUsers: 0,
@@ -173,8 +181,8 @@ export default function Dashboard() {
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold text-white mb-2">جاري تحميل البيانات...</h2>
-          <p className="text-purple-300">الاتصال بقاعدة البيانات</p>
+          <h2 className="text-2xl font-bold text-white mb-2">Loading Data...</h2>
+          <p className="text-purple-300">Connecting to Database</p>
         </div>
       </div>
     )
@@ -229,7 +237,7 @@ export default function Dashboard() {
               className="ml-auto border-red-500 text-red-300"
               onClick={loadData}
             >
-              إعادة المحاولة
+              Retry
             </Button>
           </div>
         )}
@@ -237,10 +245,10 @@ export default function Dashboard() {
         {!dataLoaded ? (
           <div className="text-center py-12">
             <AlertCircle className="h-16 w-16 text-yellow-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">لا توجد بيانات متاحة</h2>
-            <p className="text-purple-300 mb-4">لم يتم العثور على بيانات في قاعدة البيانات</p>
+            <h2 className="text-2xl font-bold text-white mb-2">No Data Available</h2>
+            <p className="text-purple-300 mb-4">No data found in database</p>
             <Button onClick={loadData} className="bg-purple-600 hover:bg-purple-700">
-              إعادة تحميل البيانات
+              Reload Data
             </Button>
           </div>
         ) : (
@@ -255,19 +263,19 @@ export default function Dashboard() {
               <TabsList className="grid w-full grid-cols-4 bg-black/20 border border-purple-800/50">
                 <TabsTrigger value="overview" className="data-[state=active]:bg-purple-600">
                   <BarChart3 className="w-4 h-4 mr-2" />
-                  نظرة عامة
+                  Overview
                 </TabsTrigger>
                 <TabsTrigger value="leaderboard" className="data-[state=active]:bg-purple-600">
                   <Award className="w-4 h-4 mr-2" />
-                  المتصدرين
+                  Leaderboard
                 </TabsTrigger>
                 <TabsTrigger value="users" className="data-[state=active]:bg-purple-600">
                   <Users className="w-4 h-4 mr-2" />
-                  الأعضاء
+                  Members
                 </TabsTrigger>
                 <TabsTrigger value="analytics" className="data-[state=active]:bg-purple-600">
                   <TrendingUp className="w-4 h-4 mr-2" />
-                  التحليلات
+                  Analytics
                 </TabsTrigger>
               </TabsList>
 
