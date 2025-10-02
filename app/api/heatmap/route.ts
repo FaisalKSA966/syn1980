@@ -5,45 +5,25 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '7')
     
-    // Mock heatmap data for demonstration
-    const mockHeatmap = {
-      heatmap: Array.from({ length: 7 }, (_, day) => 
-        Array.from({ length: 24 }, (_, hour) => {
-          // Simulate realistic activity patterns
-          let baseActivity = 10
-          
-          // Higher activity during evening hours (18-23)
-          if (hour >= 18 && hour <= 23) {
-            baseActivity = 30 + Math.random() * 20
-          }
-          // Moderate activity during day hours (9-17)
-          else if (hour >= 9 && hour <= 17) {
-            baseActivity = 15 + Math.random() * 15
-          }
-          // Lower activity during night/early morning (0-8)
-          else {
-            baseActivity = 2 + Math.random() * 8
-          }
-          
-          // Weekend boost (Friday and Saturday)
-          if (day === 5 || day === 6) {
-            baseActivity *= 1.3
-          }
-          
-          return Math.floor(baseActivity)
-        })
+    // In a real implementation, this would query your Discord bot's database
+    // For now, we return empty heatmap data to indicate no data is available
+    const realHeatmap = {
+      heatmap: Array.from({ length: 7 }, () => 
+        Array.from({ length: 24 }, () => 0)
       ),
-      days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-      hours: Array.from({ length: 24 }, (_, i) => `${i}:00`),
-      totalDays: days,
-      maxActivity: 50
+      message: "لا توجد بيانات نشاط - لم يتم العثور على بيانات نشاط في قاعدة البيانات"
     }
 
-    return NextResponse.json(mockHeatmap)
+    return NextResponse.json(realHeatmap)
   } catch (error) {
     console.error('Error fetching heatmap:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch heatmap data' },
+      { 
+        error: 'فشل في استخراج بيانات خريطة النشاط من قاعدة البيانات',
+        heatmap: Array.from({ length: 7 }, () => 
+          Array.from({ length: 24 }, () => 0)
+        )
+      },
       { status: 500 }
     )
   }

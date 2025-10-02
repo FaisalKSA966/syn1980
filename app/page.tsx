@@ -25,7 +25,9 @@ import {
   Target,
   Award,
   Eye,
-  MessageSquare
+  MessageSquare,
+  Bot,
+  AlertCircle
 } from 'lucide-react'
 import { ActivityHeatmap } from '@/components/activity-heatmap'
 import { Leaderboard } from '@/components/leaderboard'
@@ -35,84 +37,37 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [authenticated, setAuthenticated] = useState(false)
+  const [dataLoaded, setDataLoaded] = useState(false)
+  const [error, setError] = useState('')
   const router = useRouter()
 
-  // Mock data for demonstration
-  const serverStats = {
-    totalUsers: 4827,
-    activeUsers: 1243,
-    currentVoiceUsers: 89,
-    totalVoiceTime: 2847392,
-    totalSessions: 15847,
-    averageSessionTime: 1847
-  }
+  // Real data state
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    currentVoiceUsers: 0,
+    totalVoiceTime: 0,
+    totalSessions: 0,
+    averageSessionTime: 0
+  })
 
-  const users = [
-    {
-      id: '1',
-      username: 'Ahmed_1980',
-      avatar: '/placeholder-user.jpg',
-      totalVoiceTime: 125847,
-      totalSessions: 342,
-      averageSessionTime: 368,
-      lastSeen: '2024-01-15T10:30:00Z',
-      favoriteChannels: [
-        { name: 'General Voice', time: 45000, sessions: 120 },
-        { name: 'Gaming Hub', time: 38000, sessions: 95 },
-        { name: 'Study Room', time: 25000, sessions: 67 }
-      ],
-      topGames: [
-        { name: 'Valorant', time: 28000, sessions: 45 },
-        { name: 'Minecraft', time: 22000, sessions: 38 },
-        { name: 'Apex Legends', time: 18000, sessions: 29 }
-      ],
-      activityScore: 95,
-      rank: 1
-    },
-    {
-      id: '2',
-      username: 'Sarah_Dev',
-      avatar: '/placeholder-user.jpg',
-      totalVoiceTime: 98234,
-      totalSessions: 287,
-      averageSessionTime: 342,
-      lastSeen: '2024-01-15T08:15:00Z',
-      favoriteChannels: [
-        { name: 'Dev Talk', time: 42000, sessions: 98 },
-        { name: 'General Voice', time: 31000, sessions: 87 },
-        { name: 'Music Lounge', time: 19000, sessions: 54 }
-      ],
-      topGames: [
-        { name: 'Visual Studio Code', time: 35000, sessions: 67 },
-        { name: 'Among Us', time: 15000, sessions: 23 },
-        { name: 'Fall Guys', time: 12000, sessions: 18 }
-      ],
-      activityScore: 88,
-      rank: 2
-    }
-  ]
-
-  const popularGames = [
-    { name: 'Valorant', players: 234, totalTime: '1,247h', growth: 12 },
-    { name: 'Minecraft', players: 189, totalTime: '987h', growth: 8 },
-    { name: 'Apex Legends', players: 156, totalTime: '743h', growth: -3 },
-    { name: 'Among Us', players: 98, totalTime: '456h', growth: 15 }
-  ]
+  const [leaderboard, setLeaderboard] = useState([])
+  const [users, setUsers] = useState([])
 
   useEffect(() => {
     // Check authentication
     const checkAuth = () => {
       const authStatus = localStorage.getItem('syn1980_auth')
       const authTime = localStorage.getItem('syn1980_auth_time')
-      
+
       if (authStatus === 'authenticated' && authTime) {
         const timeDiff = Date.now() - parseInt(authTime)
         const hoursDiff = timeDiff / (1000 * 60 * 60)
-        
+
         // Session expires after 24 hours
         if (hoursDiff < 24) {
           setAuthenticated(true)
-          setTimeout(() => setLoading(false), 1000)
+          loadData()
         } else {
           // Clear expired session
           localStorage.removeItem('syn1980_auth')
@@ -123,21 +78,85 @@ export default function Dashboard() {
         router.push('/auth')
       }
     }
-    
+
     checkAuth()
   }, [router])
 
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      setError('')
+
+      // Fetch real data from API
+      const [statsRes, leaderboardRes, usersRes] = await Promise.all([
+        fetch('/api/stats').catch(() => null),
+        fetch('/api/leaderboard?limit=10').catch(() => null),
+        fetch('/api/users?limit=50').catch(() => null)
+      ])
+
+      // Handle stats
+      if (statsRes && statsRes.ok) {
+        const statsData = await statsRes.json()
+        setStats(statsData)
+      } else {
+        setStats({
+          totalUsers: 0,
+          activeUsers: 0,
+          currentVoiceUsers: 0,
+          totalVoiceTime: 0,
+          totalSessions: 0,
+          averageSessionTime: 0
+        })
+      }
+
+      // Handle leaderboard
+      if (leaderboardRes && leaderboardRes.ok) {
+        const leaderboardData = await leaderboardRes.json()
+        setLeaderboard(leaderboardData.users || [])
+      } else {
+        setLeaderboard([])
+      }
+
+      // Handle users
+      if (usersRes && usersRes.ok) {
+        const usersData = await usersRes.json()
+        setUsers(usersData.users || [])
+      } else {
+        setUsers([])
+      }
+
+      setDataLoaded(true)
+    } catch (err) {
+      console.error('Error loading data:', err)
+      setError('فشل في تحميل البيانات من قاعدة البيانات')
+      // Set empty data
+      setStats({
+        totalUsers: 0,
+        activeUsers: 0,
+        currentVoiceUsers: 0,
+        totalVoiceTime: 0,
+        totalSessions: 0,
+        averageSessionTime: 0
+      })
+      setLeaderboard([])
+      setUsers([])
+      setDataLoaded(true)
+    } finally {
+      setTimeout(() => setLoading(false), 1000)
+    }
+  }
+
   const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(searchTerm.toLowerCase())
+    user.username?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const formatTime = (seconds: number) => {
+  const formatTime = (seconds) => {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
     return `${hours}h ${minutes}m`
   }
 
-  const formatNumber = (num: number) => {
+  const formatNumber = (num) => {
     return new Intl.NumberFormat().format(num)
   }
 
@@ -151,32 +170,31 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold text-white mb-2">Loading 1980 Synthesis</h2>
-          <p className="text-purple-300">Analyzing server data...</p>
+          <h2 className="text-2xl font-bold text-white mb-2">جاري تحميل البيانات...</h2>
+          <p className="text-purple-300">الاتصال بقاعدة البيانات</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Header */}
-      <header className="border-b border-purple-800/50 bg-black/20 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white">
+      <header className="sticky top-0 z-40 w-full bg-black/30 backdrop-blur-lg border-b border-purple-800/50">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                <Zap className="w-6 h-6 text-white" />
+              <div className="flex items-center space-x-2">
+                <Bot className="h-8 w-8 text-purple-400" />
+                <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                  1980 Synthesis
+                </h1>
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-white">1980 Synthesis</h1>
-                <p className="text-purple-300 text-sm">
-                  Powered by <span className="font-semibold">1980 Foundation</span> × <span className="font-semibold">Flowline Data Solutions</span>
-                </p>
-              </div>
+              <p className="text-purple-300 text-sm">
+                Powered by <span className="font-semibold">1980 Foundation</span> × <span className="font-semibold">Flowline Data Solutions</span>
+              </p>
             </div>
             <div className="flex items-center space-x-4">
               <Badge variant="outline" className="border-green-500 text-green-400">
@@ -187,8 +205,8 @@ export default function Dashboard() {
                 <Globe className="w-4 h-4 mr-2" />
                 syn.ksa1980.lol
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="border-red-500 text-red-300 hover:bg-red-500/10"
                 onClick={handleLogout}
               >
@@ -200,230 +218,282 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Stats Overview */}
-        <StatsCards stats={serverStats} />
+      <main className="container mx-auto px-4 py-8">
+        {error && (
+          <div className="mb-6 p-4 bg-red-900/20 border border-red-500/50 rounded-lg flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-red-400" />
+            <p className="text-red-300">{error}</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="ml-auto border-red-500 text-red-300"
+              onClick={loadData}
+            >
+              إعادة المحاولة
+            </Button>
+          </div>
+        )}
 
-        {/* Main Dashboard */}
-        <Tabs defaultValue="overview" className="mt-8">
-          <TabsList className="grid w-full grid-cols-5 bg-black/20 border border-purple-800/50">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-purple-600">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="users" className="data-[state=active]:bg-purple-600">
-              <Users className="w-4 h-4 mr-2" />
-              Users
-            </TabsTrigger>
-            <TabsTrigger value="activity" className="data-[state=active]:bg-purple-600">
-              <Activity className="w-4 h-4 mr-2" />
-              Activity
-            </TabsTrigger>
-            <TabsTrigger value="games" className="data-[state=active]:bg-purple-600">
-              <Gamepad2 className="w-4 h-4 mr-2" />
-              Games
-            </TabsTrigger>
-            <TabsTrigger value="insights" className="data-[state=active]:bg-purple-600">
-              <Target className="w-4 h-4 mr-2" />
-              Insights
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="mt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="bg-black/20 border-purple-800/50">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Activity className="w-5 h-5 mr-2 text-purple-400" />
-                    Server Activity Heatmap
-                  </CardTitle>
-                  <CardDescription className="text-purple-300">
-                    Weekly activity patterns across all channels
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ActivityHeatmap />
-                </CardContent>
-              </Card>
-
-              <Card className="bg-black/20 border-purple-800/50">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Award className="w-5 h-5 mr-2 text-purple-400" />
-                    Top Contributors
-                  </CardTitle>
-                  <CardDescription className="text-purple-300">
-                    Most active members this week
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Leaderboard users={users.slice(0, 5)} />
-                </CardContent>
-              </Card>
+        {!dataLoaded ? (
+          <div className="text-center py-12">
+            <AlertCircle className="h-16 w-16 text-yellow-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">لا توجد بيانات متاحة</h2>
+            <p className="text-purple-300 mb-4">لم يتم العثور على بيانات في قاعدة البيانات</p>
+            <Button onClick={loadData} className="bg-purple-600 hover:bg-purple-700">
+              إعادة تحميل البيانات
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Stats Cards */}
+            <div className="mb-8">
+              <StatsCards stats={stats} />
             </div>
-          </TabsContent>
 
-          {/* Users Tab */}
-          <TabsContent value="users" className="mt-6">
-            <Card className="bg-black/20 border-purple-800/50">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-white flex items-center">
-                      <Users className="w-5 h-5 mr-2 text-purple-400" />
-                      All Members Analytics
-                    </CardTitle>
-                    <CardDescription className="text-purple-300">
-                      Comprehensive member activity analysis and rankings
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Search className="w-4 h-4 text-purple-400" />
-                    <Input
-                      placeholder="Search members..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-64 bg-black/20 border-purple-800/50 text-white placeholder:text-purple-400"
-                    />
-                  </div>
+            {/* Main Content Tabs */}
+            <Tabs defaultValue="overview" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-4 bg-black/20 border border-purple-800/50">
+                <TabsTrigger value="overview" className="data-[state=active]:bg-purple-600">
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  نظرة عامة
+                </TabsTrigger>
+                <TabsTrigger value="leaderboard" className="data-[state=active]:bg-purple-600">
+                  <Award className="w-4 h-4 mr-2" />
+                  المتصدرين
+                </TabsTrigger>
+                <TabsTrigger value="users" className="data-[state=active]:bg-purple-600">
+                  <Users className="w-4 h-4 mr-2" />
+                  الأعضاء
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="data-[state=active]:bg-purple-600">
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  التحليلات
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Overview Tab */}
+              <TabsContent value="overview" className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <Card className="bg-black/20 border-purple-800/50">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-purple-300">
+                        <Calendar className="h-5 w-5" />
+                        خريطة النشاط الأسبوعية
+                      </CardTitle>
+                      <CardDescription className="text-purple-400">
+                        أوقات ذروة النشاط في السيرفر
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ActivityHeatmap />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-black/20 border-purple-800/50">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-purple-300">
+                        <Gamepad2 className="h-5 w-5" />
+                        الألعاب الشائعة
+                      </CardTitle>
+                      <CardDescription className="text-purple-400">
+                        أكثر الألعاب لعباً في السيرفر
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {stats.totalUsers === 0 ? (
+                        <div className="text-center py-8">
+                          <Gamepad2 className="h-12 w-12 text-purple-400 mx-auto mb-3 opacity-50" />
+                          <p className="text-purple-300">لا توجد بيانات ألعاب متاحة</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <p className="text-purple-300 text-sm">سيتم عرض البيانات عند توفرها من البوت</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {filteredUsers.map((user) => (
-                    <Card key={user.id} className="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border-purple-700/50">
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center space-x-4">
-                            <Avatar className="w-16 h-16 border-2 border-purple-500">
+              </TabsContent>
+
+              {/* Leaderboard Tab */}
+              <TabsContent value="leaderboard" className="space-y-6">
+                <Card className="bg-black/20 border-purple-800/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-purple-300">
+                      <Award className="h-5 w-5" />
+                      متصدرو النشاط الصوتي
+                    </CardTitle>
+                    <CardDescription className="text-purple-400">
+                      الأعضاء الأكثر تفاعلاً في القنوات الصوتية
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {leaderboard.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Award className="h-16 w-16 text-purple-400 mx-auto mb-4 opacity-50" />
+                        <h3 className="text-xl font-bold text-white mb-2">لا توجد بيانات متصدرين</h3>
+                        <p className="text-purple-300">لم يتم العثور على بيانات نشاط صوتي في قاعدة البيانات</p>
+                      </div>
+                    ) : (
+                      <Leaderboard users={leaderboard} />
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Users Tab */}
+              <TabsContent value="users" className="space-y-6">
+                <Card className="bg-black/20 border-purple-800/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-purple-300">
+                      <Users className="h-5 w-5" />
+                      جميع الأعضاء ({users.length})
+                    </CardTitle>
+                    <CardDescription className="text-purple-400">
+                      قائمة شاملة بجميع الأعضاء النشطين
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-400 h-4 w-4" />
+                        <Input
+                          placeholder="البحث عن عضو..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10 bg-black/30 border-purple-700 text-white placeholder:text-purple-400"
+                        />
+                      </div>
+                    </div>
+
+                    {users.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Users className="h-16 w-16 text-purple-400 mx-auto mb-4 opacity-50" />
+                        <h3 className="text-xl font-bold text-white mb-2">لا توجد بيانات أعضاء</h3>
+                        <p className="text-purple-300">لم يتم العثور على بيانات أعضاء في قاعدة البيانات</p>
+                        <p className="text-purple-400 text-sm mt-2">تأكد من أن البوت يعمل ويراقب السيرفر</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {filteredUsers.map((user, index) => (
+                          <div
+                            key={user.id}
+                            className="flex items-center gap-4 p-4 rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 hover:scale-[1.02] transition-all duration-200"
+                          >
+                            <Avatar className="h-12 w-12 border-2 border-purple-500">
                               <AvatarImage src={user.avatar} alt={user.username} />
-                              <AvatarFallback className="bg-purple-600 text-white">
-                                {user.username.slice(0, 2).toUpperCase()}
+                              <AvatarFallback className="bg-purple-600 text-white font-bold">
+                                {user.username?.slice(0, 2).toUpperCase() || 'U'}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <div className="flex items-center space-x-2 mb-1">
-                                <h3 className="text-xl font-bold text-white">{user.username}</h3>
-                                <Badge className="bg-purple-600 text-white">
-                                  #{user.rank}
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-bold text-white truncate">{user.username || 'مستخدم غير معروف'}</p>
+                                <Badge className="bg-purple-600 text-white text-xs">
+                                  #{user.rank || index + 1}
                                 </Badge>
                               </div>
-                              <p className="text-purple-300 text-sm flex items-center">
-                                <Eye className="w-4 h-4 mr-1" />
-                                Last seen: {new Date(user.lastSeen).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-purple-400 mb-1">
-                              {user.activityScore}
-                            </div>
-                            <p className="text-purple-300 text-sm">Activity Score</p>
-                          </div>
-                        </div>
-
-                        <Separator className="my-4 bg-purple-800/50" />
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          {/* Voice Stats */}
-                          <div className="space-y-3">
-                            <h4 className="font-semibold text-white flex items-center">
-                              <Mic className="w-4 h-4 mr-2 text-purple-400" />
-                              Voice Activity
-                            </h4>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-purple-300">Total Time:</span>
-                                <span className="text-white font-semibold">{formatTime(user.totalVoiceTime)}</span>
+                              <div className="flex items-center gap-4 text-sm text-purple-300">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {formatTime(user.totalVoiceTime || 0)}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Activity className="h-3 w-3" />
+                                  {user.activityScore || 0} نقطة
+                                </span>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-purple-300">Sessions:</span>
-                                <span className="text-white font-semibold">{formatNumber(user.totalSessions)}</span>
+                            </div>
+
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-white">
+                                {user.activityScore || 0}
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-purple-300">Avg Session:</span>
-                                <span className="text-white font-semibold">{formatTime(user.averageSessionTime)}</span>
+                              <div className="text-purple-300 text-xs">
+                                نقاط النشاط
                               </div>
                             </div>
                           </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                          {/* Favorite Channels */}
-                          <div className="space-y-3">
-                            <h4 className="font-semibold text-white flex items-center">
-                              <MessageSquare className="w-4 h-4 mr-2 text-purple-400" />
-                              Top Channels
-                            </h4>
-                            <div className="space-y-2">
-                              {user.favoriteChannels.slice(0, 3).map((channel, index) => (
-                                <div key={channel.name} className="flex items-center justify-between text-sm">
-                                  <span className="text-purple-300 truncate">
-                                    #{index + 1} {channel.name}
-                                  </span>
-                                  <span className="text-white font-semibold ml-2">
-                                    {formatTime(channel.time)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
+              {/* Analytics Tab */}
+              <TabsContent value="analytics" className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <Card className="bg-black/20 border-purple-800/50">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-purple-300">
+                        <TrendingUp className="h-5 w-5" />
+                        إحصائيات النمو
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {stats.totalUsers === 0 ? (
+                        <div className="text-center py-8">
+                          <TrendingUp className="h-12 w-12 text-purple-400 mx-auto mb-3 opacity-50" />
+                          <p className="text-purple-300">لا توجد بيانات نمو متاحة</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-purple-300">إجمالي الأعضاء</span>
+                            <span className="font-bold text-white">{formatNumber(stats.totalUsers)}</span>
                           </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-purple-300">الأعضاء النشطين</span>
+                            <span className="font-bold text-white">{formatNumber(stats.activeUsers)}</span>
+                          </div>
+                          <Progress 
+                            value={(stats.activeUsers / stats.totalUsers) * 100} 
+                            className="h-2"
+                          />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
 
-                          {/* Top Games */}
-                          <div className="space-y-3">
-                            <h4 className="font-semibold text-white flex items-center">
-                              <Gamepad2 className="w-4 h-4 mr-2 text-purple-400" />
-                              Top Games
-                            </h4>
-                            <div className="space-y-2">
-                              {user.topGames.slice(0, 3).map((game, index) => (
-                                <div key={game.name} className="flex items-center justify-between text-sm">
-                                  <span className="text-purple-300 truncate">
-                                    #{index + 1} {game.name}
-                                  </span>
-                                  <span className="text-white font-semibold ml-2">
-                                    {formatTime(game.time)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
+                  <Card className="bg-black/20 border-purple-800/50">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-purple-300">
+                        <Mic className="h-5 w-5" />
+                        النشاط الصوتي
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {stats.totalVoiceTime === 0 ? (
+                        <div className="text-center py-8">
+                          <Mic className="h-12 w-12 text-purple-400 mx-auto mb-3 opacity-50" />
+                          <p className="text-purple-300">لا توجد بيانات نشاط صوتي</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-purple-300">إجمالي الوقت الصوتي</span>
+                            <span className="font-bold text-white">{formatTime(stats.totalVoiceTime)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-purple-300">متوسط الجلسة</span>
+                            <span className="font-bold text-white">{formatTime(stats.averageSessionTime)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-purple-300">المتصلين حالياً</span>
+                            <span className="font-bold text-white">{formatNumber(stats.currentVoiceUsers)}</span>
                           </div>
                         </div>
-
-                        {/* Activity Progress */}
-                        <div className="mt-4">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-purple-300 text-sm">Activity Level</span>
-                            <span className="text-white text-sm font-semibold">{user.activityScore}%</span>
-                          </div>
-                          <Progress value={user.activityScore} className="h-2 bg-purple-900/50" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Other tabs content would go here */}
-        </Tabs>
-      </div>
-
-      {/* Footer */}
-      <footer className="border-t border-purple-800/50 bg-black/20 backdrop-blur-sm mt-12">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="text-purple-300 text-sm">
-              © 2024 1980 Foundation × Flowline Data Solutions. All rights reserved.
-            </div>
-            <div className="flex items-center space-x-4 text-purple-400 text-sm">
-              <span>Powered by 1980 Synthesis</span>
-              <Separator orientation="vertical" className="h-4 bg-purple-800" />
-              <span>syn.ksa1980.lol</span>
-            </div>
-          </div>
-        </div>
-      </footer>
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
+      </main>
     </div>
   )
 }
